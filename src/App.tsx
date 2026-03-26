@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Search, Globe, Tag, Camera, ExternalLink, Copy, Check, AlertCircle, Loader2, Download, Scissors, Maximize2, X, Save } from "lucide-react";
+import { Search, Globe, Tag, Camera, ExternalLink, Copy, Check, AlertCircle, Loader2, Download, Scissors, Maximize2, X, Save, Code, Monitor, Smartphone, Clock, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop, PixelCrop } from "react-image-crop";
 
@@ -14,7 +14,9 @@ interface TestResult {
 export default function App() {
   const [url, setUrl] = useState("");
   const [html, setHtml] = useState("");
-  const [mode, setMode] = useState<"url" | "snippet">("url");
+  const [mode, setMode] = useState<"snippet" | "url">("snippet");
+  const [deviceType, setDeviceType] = useState<"desktop" | "mobile">("desktop");
+  
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Initializing analyzer...");
   const [result, setResult] = useState<TestResult | null>(null);
@@ -79,10 +81,14 @@ export default function App() {
         });
       }, 3000);
 
+      const payload = mode === "url" 
+        ? { url: formattedUrl, deviceType } 
+        : { html, deviceType };
+
       const response = await fetch("/api/test-tag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mode === "url" ? { url: formattedUrl } : { html }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(60000), // 60 second timeout for analysis
       });
 
@@ -204,7 +210,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-orange-500 selection:text-black">
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-orange-500 selection:text-black flex flex-col">
       {/* Header */}
       <header className="border-b border-white/10 bg-black/50 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -212,328 +218,323 @@ export default function App() {
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
               <Tag className="text-black w-5 h-5" />
             </div>
-            <span className="font-bold text-xl tracking-tight uppercase">Tag Tester <span className="text-orange-500">Pro</span></span>
+            <span className="font-bold text-xl tracking-tight uppercase">Tag Tester</span>
           </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white/60">
-            <a href="#" className="hover:text-white transition-colors">Documentation</a>
-            <a href="#" className="hover:text-white transition-colors">API Reference</a>
-            <a href="#" className="hover:text-white transition-colors">Support</a>
-          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        {/* Hero Section */}
-        <div className="text-center mb-16">
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-black mb-6 tracking-tighter uppercase"
-          >
-            Audit Your <span className="text-orange-500">Marketing Tags</span>
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-white/60 text-lg max-w-2xl mx-auto mb-10"
-          >
-            Test live URLs or raw HTML snippets to verify tag implementation and visual rendering.
-          </motion.p>
-
-          {/* Mode Switcher */}
-          <div className="flex justify-center mb-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full flex flex-col">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
+          {/* Left Column: Input & Options */}
+          <div className="lg:col-span-4 space-y-6 flex flex-col">
+            {/* Mode Switcher */}
             <div className="bg-white/5 p-1 rounded-xl border border-white/10 flex gap-1">
               <button
-                onClick={() => setMode("url")}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${mode === "url" ? "bg-orange-500 text-black" : "text-white/40 hover:text-white"}`}
+                onClick={() => setMode("snippet")}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${mode === "snippet" ? "bg-orange-500 text-black" : "text-white/40 hover:text-white"}`}
               >
-                URL Mode
+                <Code className="w-4 h-4" />
+                Snippet Mode (Default)
               </button>
               <button
-                onClick={() => setMode("snippet")}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${mode === "snippet" ? "bg-orange-500 text-black" : "text-white/40 hover:text-white"}`}
+                onClick={() => setMode("url")}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${mode === "url" ? "bg-orange-500 text-black" : "text-white/40 hover:text-white"}`}
               >
-                Snippet Mode
+                <Globe className="w-4 h-4" />
+                URL Mode
               </button>
             </div>
-          </div>
 
-          {/* Search Form */}
-          <motion.form 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            onSubmit={handleTest}
-            className="max-w-3xl mx-auto relative group"
-          >
-            {mode === "url" ? (
-              <div className="relative flex items-center">
-                <div className="absolute left-6 text-white/40 group-focus-within:text-orange-500 transition-colors">
-                  <Search className="w-6 h-6" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="https://example.com"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="w-full bg-white/5 border-2 border-white/10 rounded-2xl py-6 pl-16 pr-40 text-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all placeholder:text-white/20"
-                  disabled={loading}
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !url}
-                  className="absolute right-3 bg-orange-500 hover:bg-orange-400 disabled:bg-white/10 disabled:text-white/20 text-black font-bold py-3 px-8 rounded-xl transition-all flex items-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {statusMessage}
-                    </>
-                  ) : (
-                    "Run Test"
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="relative">
+            <form onSubmit={handleTest} className="flex flex-col flex-1 space-y-6">
+              {mode === "snippet" ? (
+                <div className="flex-1 flex flex-col">
+                  <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2">HTML Snippet</label>
                   <textarea
                     placeholder="Paste your HTML tag snippet here (e.g., <script>...</script>)"
                     value={html}
                     onChange={(e) => setHtml(e.target.value)}
-                    className="w-full bg-white/5 border-2 border-white/10 rounded-2xl py-6 px-6 text-lg focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all placeholder:text-white/20 min-h-[200px] font-mono"
+                    className="w-full flex-1 bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-sm focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all placeholder:text-white/20 min-h-[200px] font-mono resize-none"
                     disabled={loading}
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading || !html}
-                  className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-white/10 disabled:text-white/20 text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {statusMessage}
-                    </>
-                  ) : (
-                    "Analyze Snippet"
-                  )}
-                </button>
-              </div>
-            )}
-          </motion.form>
-        </div>
-
-        {/* Results Section */}
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="max-w-3xl mx-auto bg-red-500/10 border border-red-500/20 rounded-2xl p-6 flex items-start gap-4 text-red-400"
-            >
-              <AlertCircle className="w-6 h-6 shrink-0" />
-              <div>
-                <h3 className="font-bold mb-1">Analysis Failed</h3>
-                <p className="text-sm opacity-80">{error}</p>
-              </div>
-            </motion.div>
-          )}
-
-          {result && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-8"
-            >
-              {/* Left Column: Info & Tags */}
-              <div className="lg:col-span-5 space-y-8">
-                {/* Page Info Card */}
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Page Title</label>
-                    <h2 className="text-2xl font-bold leading-tight">{result.title || "No title found"}</h2>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Final Destination URL</label>
-                    <div className="flex items-center gap-2 p-3 bg-black/40 rounded-xl border border-white/5 group">
-                      <Globe className="w-4 h-4 text-orange-500 shrink-0" />
-                      <span className="text-sm truncate text-white/80">{result.finalUrl}</span>
-                      <button 
-                        onClick={() => copyToClipboard(result.finalUrl)}
-                        className="ml-auto p-2 hover:bg-white/10 rounded-lg transition-colors"
-                      >
-                        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-white/40" />}
-                      </button>
+              ) : (
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2">Target URL</label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-4 text-white/40">
+                      <Search className="w-5 h-5" />
                     </div>
+                    <input
+                      type="text"
+                      placeholder="https://example.com"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all placeholder:text-white/20"
+                      disabled={loading}
+                    />
                   </div>
                 </div>
+              )}
 
-                {/* Detected Tags Card */}
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold uppercase tracking-tight flex items-center gap-2">
-                      <Tag className="w-5 h-5 text-orange-500" />
-                      Detected Tags
-                    </h3>
-                    <span className="bg-orange-500 text-black text-[10px] font-black px-2 py-1 rounded-full">
-                      {result.detectedTags.length} FOUND
+              {/* Advanced Options */}
+              <div className="space-y-4 bg-white/5 border border-white/10 rounded-2xl p-5">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-white/40 mb-4">Test Options</h3>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-white/80 flex items-center gap-2">
+                      <Monitor className="w-4 h-4" /> Device
                     </span>
+                    <div className="flex bg-black/40 rounded-lg border border-white/5 p-1">
+                      <button type="button" onClick={() => setDeviceType("desktop")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${deviceType === "desktop" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}>Desktop</button>
+                      <button type="button" onClick={() => setDeviceType("mobile")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${deviceType === "mobile" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}>Mobile</button>
+                    </div>
                   </div>
-
-                  {result.detectedTags.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {result.detectedTags.map((tag) => (
-                        <div 
-                          key={tag}
-                          className="bg-white/10 hover:bg-white/20 border border-white/5 px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
-                        >
-                          <div className="w-2 h-2 bg-orange-500 rounded-full" />
-                          {tag}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 border-2 border-dashed border-white/5 rounded-2xl">
-                      <p className="text-white/40 text-sm italic">No common marketing tags detected.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex gap-4">
-                  <a 
-                    href={result.finalUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all"
-                  >
-                    <ExternalLink className="w-5 h-5" />
-                    Open Live Site
-                  </a>
                 </div>
               </div>
 
-              {/* Right Column: Screenshot & Preview */}
-              <div className="lg:col-span-7">
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-4 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-4 px-4 pt-2">
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={() => setActiveTab("screenshot")}
-                        className={`flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === "screenshot" ? "text-orange-500" : "text-white/40 hover:text-white"}`}
-                      >
-                        <Camera className="w-4 h-4" />
-                        Screenshot
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("preview")}
-                        className={`flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === "preview" ? "text-orange-500" : "text-white/40 hover:text-white"}`}
-                      >
-                        <Globe className="w-4 h-4" />
-                        Live Preview
-                      </button>
+              <button
+                type="submit"
+                disabled={loading || (mode === "url" ? !url : !html)}
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-white/10 disabled:text-white/20 text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {statusMessage}
+                  </>
+                ) : (
+                  "Run Audit"
+                )}
+              </button>
+            </form>
+          </div>
+
+          {/* Right Column: Preview & Results */}
+          <div className="lg:col-span-8 flex flex-col h-full min-h-[600px]">
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="mb-6 bg-red-500/10 border border-red-500/20 rounded-2xl p-6 flex items-start gap-4 text-red-400"
+                >
+                  <AlertCircle className="w-6 h-6 shrink-0" />
+                  <div>
+                    <h3 className="font-bold mb-1">Analysis Failed</h3>
+                    <p className="text-sm opacity-80">{error}</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {!result && !error && !loading && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex-1 border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-white/20 p-8 text-center"
+                >
+                  <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4">
+                    <Tag className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2 text-white/40">Ready to Audit</h3>
+                  <p className="max-w-md">Enter a URL or paste an HTML snippet on the left to begin analyzing your marketing tags.</p>
+                </motion.div>
+              )}
+
+              {loading && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex-1 border border-white/10 rounded-3xl flex flex-col items-center justify-center bg-white/5 p-8 text-center"
+                >
+                  <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-6" />
+                  <h3 className="text-xl font-bold mb-2">Analyzing Content</h3>
+                  <p className="text-white/60">{statusMessage}</p>
+                </motion.div>
+              )}
+
+              {result && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col h-full space-y-6"
+                >
+                  {/* Results Header Info */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1 block">Detected Tags</label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-orange-500">{result.detectedTags.length}</span>
+                        <span className="text-sm text-white/60">found</span>
+                      </div>
+                      {result.detectedTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-3">
+                          {result.detectedTags.slice(0, 3).map(tag => (
+                            <span key={tag} className="text-[10px] bg-white/10 px-2 py-1 rounded-md">{tag}</span>
+                          ))}
+                          {result.detectedTags.length > 3 && (
+                            <span className="text-[10px] bg-white/10 px-2 py-1 rounded-md">+{result.detectedTags.length - 3} more</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
-                      {activeTab === "preview" ? null : isCropping ? (
-                        <>
-                          <button
-                            onClick={saveCrop}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative text-green-500"
-                            title="Save Crop"
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-center">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1 block">Destination</label>
+                      <div className="flex items-center gap-2 group">
+                        <span className="text-sm truncate text-white/80 flex-1">{result.finalUrl}</span>
+                        <button 
+                          onClick={() => copyToClipboard(result.finalUrl)}
+                          className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                        >
+                          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-white/40" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visual Output Area */}
+                  <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl p-4 flex flex-col min-h-[400px]">
+                    <div className="flex items-center justify-between mb-4 px-2">
+                      <div className="flex items-center gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+                        <button
+                          onClick={() => setActiveTab("screenshot")}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === "screenshot" ? "bg-white/10 text-orange-500" : "text-white/40 hover:text-white"}`}
+                        >
+                          <Camera className="w-4 h-4" />
+                          Screenshot
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("preview")}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === "preview" ? "bg-white/10 text-orange-500" : "text-white/40 hover:text-white"}`}
+                        >
+                          <Globe className="w-4 h-4" />
+                          Live Preview
+                        </button>
+                      </div>
+                      
+                      <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
+                        {activeTab === "preview" ? (
+                          <a 
+                            href={result.finalUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-widest"
+                            title="Open Live Site"
                           >
-                            <Save className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setIsCropping(false)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative text-red-500"
-                            title="Cancel"
+                            <ExternalLink className="w-4 h-4" />
+                            Open
+                          </a>
+                        ) : isCropping ? (
+                          <>
+                            <button
+                              onClick={saveCrop}
+                              className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative text-green-500"
+                              title="Save Crop"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setIsCropping(false)}
+                              className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative text-red-500"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setIsCropping(true)}
+                              className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative"
+                              title="Crop Image"
+                            >
+                              <Scissors className="w-4 h-4 text-white/40 group-hover:text-white" />
+                            </button>
+                            <button
+                              onClick={copyImageToClipboard}
+                              className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative"
+                              title="Copy Image"
+                            >
+                              {screenshotAction === "copy" ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-white/40 group-hover:text-white" />}
+                            </button>
+                            <button
+                              onClick={downloadScreenshot}
+                              className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative"
+                              title="Download Image"
+                            >
+                              <Download className="w-4 h-4 text-white/40 group-hover:text-white" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/5 bg-black flex items-center justify-center">
+                      <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+                        {activeTab === "preview" ? (
+                          <iframe 
+                            src={mode === "url" ? url : undefined}
+                            srcDoc={mode === "snippet" ? html : undefined}
+                            className="w-full h-full bg-white rounded-xl border-0"
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+                            title="Live Preview"
+                          />
+                        ) : isCropping ? (
+                          <ReactCrop
+                            crop={crop}
+                            onChange={(c) => setCrop(c)}
+                            onComplete={(c) => setCompletedCrop(c)}
+                            className="max-w-full"
                           >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => setIsCropping(true)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative"
-                            title="Crop Image"
-                          >
-                            <Scissors className="w-4 h-4 text-white/40 group-hover:text-white" />
-                          </button>
-                          <button
-                            onClick={copyImageToClipboard}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative"
-                            title="Copy Image"
-                          >
-                            {screenshotAction === "copy" ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-white/40 group-hover:text-white" />}
-                          </button>
-                          <button
-                            onClick={downloadScreenshot}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative"
-                            title="Download Image"
-                          >
-                            <Download className="w-4 h-4 text-white/40 group-hover:text-white" />
-                          </button>
-                        </>
-                      )}
+                            <img 
+                              ref={imgRef}
+                              src={result.screenshot} 
+                              alt="Crop Preview" 
+                              onLoad={onImageLoad}
+                              className="max-w-full h-auto object-contain"
+                              referrerPolicy="no-referrer"
+                            />
+                          </ReactCrop>
+                        ) : (
+                          <img 
+                            ref={screenshotRef}
+                            src={result.screenshot} 
+                            alt="Page Screenshot" 
+                            className="max-w-full h-auto object-contain shadow-2xl"
+                            referrerPolicy="no-referrer"
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/5 bg-black min-h-[400px] flex items-center justify-center">
-                    <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
-                      {activeTab === "preview" ? (
-                        <iframe 
-                          src={mode === "url" ? url : undefined}
-                          srcDoc={mode === "snippet" ? html : undefined}
-                          className="w-full h-full bg-white rounded-xl border-0"
-                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-                          title="Live Preview"
-                        />
-                      ) : isCropping ? (
-                        <ReactCrop
-                          crop={crop}
-                          onChange={(c) => setCrop(c)}
-                          onComplete={(c) => setCompletedCrop(c)}
-                          className="max-w-full"
-                        >
-                          <img 
-                            ref={imgRef}
-                            src={result.screenshot} 
-                            alt="Crop Preview" 
-                            onLoad={onImageLoad}
-                            className="max-w-full h-auto object-contain"
-                            referrerPolicy="no-referrer"
-                          />
-                        </ReactCrop>
-                      ) : (
-                        <img 
-                          ref={screenshotRef}
-                          src={result.screenshot} 
-                          alt="Page Screenshot" 
-                          className="max-w-full h-auto object-contain shadow-2xl"
-                          referrerPolicy="no-referrer"
-                        />
-                      )}
+                  {/* Full Tags List (if many) */}
+                  {result.detectedTags.length > 3 && (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-white/40 mb-3">All Detected Tags</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {result.detectedTags.map((tag) => (
+                          <div 
+                            key={tag}
+                            className="bg-white/10 border border-white/5 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2"
+                          >
+                            <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
+                            {tag}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </main>
-
-      {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-4 py-12 border-t border-white/10 text-center">
-        <p className="text-white/20 text-sm uppercase tracking-[0.2em] font-bold">
-          &copy; 2026 Tag Tester Pro &bull; Built for Performance
-        </p>
-      </footer>
     </div>
   );
 }
+
