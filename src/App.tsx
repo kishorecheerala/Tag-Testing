@@ -385,12 +385,14 @@ export default function App() {
                       <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1 block">Destination</label>
                       <div className="flex items-center gap-2 group">
                         <span className="text-sm truncate text-white/80 flex-1">{result.finalUrl}</span>
-                        <button 
-                          onClick={() => copyToClipboard(result.finalUrl)}
-                          className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
-                        >
-                          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-white/40" />}
-                        </button>
+                        {result.finalUrl.startsWith('http') && (
+                          <button 
+                            onClick={() => copyToClipboard(result.finalUrl)}
+                            className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                          >
+                            {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-white/40" />}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -417,16 +419,18 @@ export default function App() {
                       
                       <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
                         {activeTab === "preview" ? (
-                          <a 
-                            href={result.finalUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-widest"
-                            title="Open Live Site"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            Open
-                          </a>
+                          result.finalUrl.startsWith('http') && (
+                            <a 
+                              href={result.finalUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-widest"
+                              title="Open Live Site"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              Open
+                            </a>
+                          )
                         ) : isCropping ? (
                           <>
                             <button
@@ -477,9 +481,9 @@ export default function App() {
                         {activeTab === "preview" ? (
                           <iframe 
                             src={mode === "url" ? url : undefined}
-                            srcDoc={mode === "snippet" ? html : undefined}
+                            srcDoc={mode === "snippet" ? `<base target="_blank" />${html}` : undefined}
                             className="w-full h-full bg-white rounded-xl border-0"
-                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
                             title="Live Preview"
                           />
                         ) : isCropping ? (

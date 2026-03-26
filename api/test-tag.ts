@@ -93,7 +93,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let finalUrl = page.url();
     if (html) {
-      finalUrl = "Manual click required (Test in Live Preview)";
+      const hrefMatch = html.match(/href=["'](.*?)["']/i);
+      if (hrefMatch && hrefMatch[1]) {
+        finalUrl = hrefMatch[1];
+      } else {
+        finalUrl = "No destination URL found in snippet";
+      }
     }
 
     await new Promise(resolve => setTimeout(resolve, html ? 500 : 1000));
