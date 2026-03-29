@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  let context: puppeteer.BrowserContext | null = null;
+  let page: puppeteer.Page | null = null;
   try {
     if (!cachedBrowser || !cachedBrowser.isConnected()) {
       // Configure chromium for serverless environment
@@ -39,8 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    context = await cachedBrowser.createBrowserContext();
-    const page = await context.newPage();
+    page = await cachedBrowser.newPage();
     
     page.on('error', err => console.error('Page error:', err));
     page.on('pageerror', err => console.error('Page script error:', err));
@@ -149,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const title = await page.title();
-    if (context) await context.close();
+    if (page) await page.close();
 
     res.json({
       success: true,
@@ -159,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       detectedTags,
     });
   } catch (error: any) {
-    if (context) await context.close();
+    if (page) await page.close().catch(() => {});
     console.error("Puppeteer error:", error);
     res.status(500).json({ error: "Failed to analyze content", details: error.message });
   }

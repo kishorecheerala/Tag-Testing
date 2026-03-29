@@ -40,7 +40,7 @@ async function startServer() {
       }
     }
 
-    let context: puppeteer.BrowserContext | null = null;
+    let page: puppeteer.Page | null = null;
     try {
       if (!cachedBrowser || !cachedBrowser.isConnected()) {
         console.log("Launching new browser instance...");
@@ -57,8 +57,7 @@ async function startServer() {
         });
       }
 
-      context = await cachedBrowser.createBrowserContext();
-      const page = await context.newPage();
+      page = await cachedBrowser.newPage();
       
       // Log page errors
       page.on('error', err => console.error('Page error:', err));
@@ -185,7 +184,7 @@ async function startServer() {
       // Capture page title
       const title = await page.title();
 
-      if (context) await context.close();
+      if (page) await page.close();
 
       res.json({
         success: true,
@@ -195,7 +194,7 @@ async function startServer() {
         detectedTags,
       });
     } catch (error: any) {
-      if (context) await context.close();
+      if (page) await page.close().catch(() => {});
       console.error("Puppeteer error:", error);
       res.status(500).json({ error: "Failed to analyze content", details: error.message });
     }
