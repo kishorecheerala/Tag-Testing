@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import puppeteer from "puppeteer";
 import cors from "cors";
 import path from "path";
+let cachedBrowser: puppeteer.Browser | null = null;
 
 async function startServer() {
   const app = express();
@@ -39,21 +40,25 @@ async function startServer() {
       }
     }
 
-    let browser;
+    let context: puppeteer.BrowserContext | null = null;
     try {
-      browser = await puppeteer.launch({
-        args: [
-          "--no-sandbox", 
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-accelerated-2d-canvas",
-          "--disable-gpu",
-          "--window-size=1280,800"
-        ],
-        headless: true,
-      });
+      if (!cachedBrowser || !cachedBrowser.isConnected()) {
+        console.log("Launching new browser instance...");
+        cachedBrowser = await puppeteer.launch({
+          args: [
+            "--no-sandbox", 
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--disable-gpu",
+            "--window-size=1280,800"
+          ],
+          headless: true,
+        });
+      }
 
-      const page = await browser.newPage();
+      context = await cachedBrowser.createBrowserContext();
+      const page = await context.newPage();
       
       // Log page errors
       page.on('error', err => console.error('Page error:', err));
@@ -126,44 +131,43 @@ async function startServer() {
       let screenshot: string;
       try {
         console.log("Capturing screenshot...");
-        // Try to find the ad element to crop to it
-        // Expanded selectors for common ad tags and containers
-        const adSelectors = [
-          'ins.adsbygoogle',
-          'iframe[id*="google_ads_iframe"]',
-          'iframe[src*="doubleclick"]',
-          'iframe[src*="adservice"]',
-          '.dcmads',
-          '[id*="ad-container"]',
-          '[class*="ad-container"]',
-          'ins',
-          'iframe',
-          '[id*="ad"]',
-          '[class*="ad"]',
-          '#ad',
-          '.ad'
-        ];
+        let adBox = null;
         
-        let adElement = null;
-        for (const selector of adSelectors) {
-          try {
-            const el = await page.$(selector);
-            if (el) {
-              const box = await el.boundingBox();
-              if (box && box.width > 10 && box.height > 10) {
-                adElement = el;
-                console.log(`Found ad element with selector: ${selector}`);
-                break;
+        if (html) {
+          // Expanded selectors for common ad tags and containers
+          adBox = await page.evaluate(() => {
+            const adSelectors = [
+              'ins.adsbygoogle',
+              'iframe[id*="google_ads_iframe"]',
+              'iframe[src*="doubleclick"]',
+              'iframe[src*="adservice"]',
+              '.dcmads',
+              '[id*="ad-container"]',
+              '[class*="ad-container"]',
+              'ins',
+              'iframe',
+              '[id*="ad"]',
+              '[class*="ad"]',
+              '#ad',
+              '.ad'
+            ];
+            
+            for (const selector of adSelectors) {
+              const el = document.querySelector(selector);
+              if (el) {
+                const rect = el.getBoundingClientRect();
+                if (rect.width > 10 && rect.height > 10) {
+                  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+                }
               }
             }
-          } catch (e) {
-            continue;
-          }
+            return null;
+          });
         }
 
-        if (adElement && html) {
+        if (adBox) {
           // For snippets, try to capture just the ad
-          screenshot = await adElement.screenshot({ encoding: "base64", timeout: 10000 }) as string;
+          screenshot = await page.screenshot({ encoding: "base64", clip: adBox, timeout: 10000 }) as string;
         } else {
           // Fallback to full viewport
           screenshot = await page.screenshot({ encoding: "base64", fullPage: false, timeout: 10000 }) as string;
@@ -181,7 +185,7 @@ async function startServer() {
       // Capture page title
       const title = await page.title();
 
-      await browser.close();
+      if (context) await context.close();
 
       res.json({
         success: true,
@@ -191,7 +195,7 @@ async function startServer() {
         detectedTags,
       });
     } catch (error: any) {
-      if (browser) await browser.close();
+      if (context) await context.close();
       console.error("Puppeteer error:", error);
       res.status(500).json({ error: "Failed to analyze content", details: error.message });
     }

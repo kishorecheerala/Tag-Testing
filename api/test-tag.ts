@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
+let cachedBrowser: puppeteer.Browser | null = null;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -24,18 +26,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  let browser;
+  let context: puppeteer.BrowserContext | null = null;
   try {
-    // Configure chromium for serverless environment
-    chromium.setGraphicsMode = false;
-    
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
+    if (!cachedBrowser || !cachedBrowser.isConnected()) {
+      // Configure chromium for serverless environment
+      chromium.setGraphicsMode = false;
+      
+      cachedBrowser = await puppeteer.launch({
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      });
+    }
 
-    const page = await browser.newPage();
+    context = await cachedBrowser.createBrowserContext();
+    const page = await context.newPage();
     
     page.on('error', err => console.error('Page error:', err));
     page.on('pageerror', err => console.error('Page script error:', err));
@@ -106,30 +111,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let screenshot: string;
     try {
       console.log("Capturing screenshot...");
-      const adSelectors = [
-        'ins.adsbygoogle', 'iframe[id*="google_ads_iframe"]', 'iframe[src*="doubleclick"]',
-        'iframe[src*="adservice"]', '.dcmads', '[id*="ad-container"]', '[class*="ad-container"]',
-        'ins', 'iframe', '[id*="ad"]', '[class*="ad"]', '#ad', '.ad'
-      ];
-      
-      let adElement = null;
-      for (const selector of adSelectors) {
-        try {
-          const el = await page.$(selector);
-          if (el) {
-            const box = await el.boundingBox();
-            if (box && box.width > 10 && box.height > 10) {
-              adElement = el;
-              break;
+      let adBox = null;
+
+      if (html) {
+        adBox = await page.evaluate(() => {
+          const adSelectors = [
+            'ins.adsbygoogle', 'iframe[id*="google_ads_iframe"]', 'iframe[src*="doubleclick"]',
+            'iframe[src*="adservice"]', '.dcmads', '[id*="ad-container"]', '[class*="ad-container"]',
+            'ins', 'iframe', '[id*="ad"]', '[class*="ad"]', '#ad', '.ad'
+          ];
+          for (const selector of adSelectors) {
+            const el = document.querySelector(selector);
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              if (rect.width > 10 && rect.height > 10) {
+                return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+              }
             }
           }
-        } catch (e) {
-          continue;
-        }
+          return null;
+        });
       }
 
-      if (adElement && html) {
-        screenshot = await adElement.screenshot({ encoding: "base64", timeout: 10000 }) as string;
+      if (adBox) {
+        screenshot = await page.screenshot({ encoding: "base64", clip: adBox, timeout: 10000 }) as string;
       } else {
         screenshot = await page.screenshot({ encoding: "base64", fullPage: false, timeout: 10000 }) as string;
       }
@@ -144,7 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const title = await page.title();
-    await browser.close();
+    if (context) await context.close();
 
     res.json({
       success: true,
@@ -154,7 +159,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       detectedTags,
     });
   } catch (error: any) {
-    if (browser) await browser.close();
+    if (context) await context.close();
     console.error("Puppeteer error:", error);
     res.status(500).json({ error: "Failed to analyze content", details: error.message });
   }
